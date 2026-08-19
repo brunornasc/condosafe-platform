@@ -1,0 +1,141 @@
+{
+  "realm": "condosafe",
+  "enabled": true,
+  "displayName": "CondoSafe Platform",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+
+  "roles": {
+    "realm": [
+      {
+        "name": "ROLE_ADMIN",
+        "description": "Administrador do condominio - acesso total a plataforma"
+      },
+      {
+        "name": "ROLE_GUARD",
+        "description": "Porteiro/segurança - opera o dashboard de acesso e o modo de emergencia"
+      },
+      {
+        "name": "ROLE_RESIDENT",
+        "description": "Morador - gera QR Code de acesso e recebe alertas de emergencia"
+      },
+      {
+        "name": "ROLE_VISITOR",
+        "description": "Visitante - acesso temporario via passe/deep link, sem cadastro completo"
+      }
+    ]
+  },
+
+  "clients": [
+    {
+      "clientId": "condosafe-api",
+      "name": "CondoSafe Backend",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "secret": "condosafe-api-secret-CHANGE-ME",
+      "redirectUris": [],
+      "webOrigins": []
+    },
+    {
+      "clientId": "resident-mobile",
+      "name": "App do Morador",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "redirectUris": [
+        "condosafe://callback",
+        "capacitor://localhost/*",
+        "http://localhost:*/*"
+      ],
+      "webOrigins": ["+"]
+    },
+    {
+      "clientId": "guard-dashboard",
+      "name": "Dashboard da Portaria",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": ["+"]
+    },
+    {
+      "clientId": "visitor-pwa",
+      "name": "PWA do Visitante",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "redirectUris": [
+        "http://localhost:4000/*"
+      ],
+      "webOrigins": ["+"]
+    }
+  ],
+
+  "users": [
+    {
+      "username": "admin.condosafe",
+      "enabled": true,
+      "email": "admin@condosafe.local",
+      "emailVerified": true,
+      "credentials": [
+        {"type": "password", "value": "admin123", "temporary": false}
+      ],
+      "realmRoles": ["ROLE_ADMIN"]
+    },
+    {
+      "username": "porteiro.joao",
+      "enabled": true,
+      "email": "joao.porteiro@condosafe.local",
+      "emailVerified": true,
+      "credentials": [
+        {"type": "password", "value": "guard123", "temporary": false}
+      ],
+      "realmRoles": ["ROLE_GUARD"]
+    },
+    {
+      "username": "morador.maria",
+      "enabled": true,
+      "email": "maria.moradora@condosafe.local",
+      "emailVerified": true,
+      "credentials": [
+        {"type": "password", "value": "resident123", "temporary": false}
+      ],
+      "realmRoles": ["ROLE_RESIDENT"]
+    },
+    {
+      "username": "visitante.pedro",
+      "enabled": true,
+      "email": "pedro.visitante@condosafe.local",
+      "emailVerified": true,
+      "credentials": [
+        {"type": "password", "value": "visitor123", "temporary": false}
+      ],
+      "realmRoles": ["ROLE_VISITOR"]
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: condosafe-api
+
+  # -------------------------------------------------------------
+  # Persistência Reativa (R2DBC)
+  # -------------------------------------------------------------
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/condosafe
+    username: condosafe
+    password: condosafe
+    pool:
+      enabled: true
+      initial-size: 10
+      max-size: 30
+      max-idle-time: 30m
+
+  # -------------------------------------------------------------
+  # Migrações de Banco (Flyway via JDBC síncrono no startup)
+  # -------------------------------------------------------------
+  flyway:
+    enabled: true
+    url: jdbc:postgresql://localhost:5432/condosafe
+    user: condosafe
+    password: condosafe
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # -------------------------------------------------------------
+  # In-Memory & Cache Reativo (Redis / Lettuce)
+  # -------------------------------------------------------------
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 10
+          min-idle: 5
+          max-wait: 2000ms
+
+  # -------------------------------------------------------------
+  # Streaming de Eventos (Apache Kafka)
+  # -------------------------------------------------------------
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: condosafe-core-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.condosafe.*"
+
+  # -------------------------------------------------------------
+  # Segurança & OAuth2 Resource Server (Keycloak)
+  # -------------------------------------------------------------
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/condosafe
+          jwk-set-uri: http://localhost:8080/realms/condosafe/protocol/openid-connect/certs
+
+# ---------------------------------------------------------------
+# Tópicos Customizados do Domínio CondoSafe
+# ---------------------------------------------------------------
+condosafe:
+  kafka:
+    topics:
+      access-events: access-events
+      incident-events: incident-events
+      evacuation-telemetry: evacuation-telemetry
+  security:
+    qr-code:
+      secret-key: "condosafe-development-master-secret-change-in-prod"
+      validity-seconds: 30
+      clock-drift-tolerance-slots: 1
+
+# ---------------------------------------------------------------
+# Observabilidade & Healthchecks (Actuator)
+# ---------------------------------------------------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+# ---------------------------------------------------------------
+# Níveis de Log
+# ---------------------------------------------------------------
+logging:
+  level:
+    root: INFO
+    com.condosafe: DEBUG
+    org.springframework.security: INFO
+    org.springframework.data.r2dbc: INFO
+    org.springframework.kafka: INFO

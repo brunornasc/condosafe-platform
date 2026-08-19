@@ -22,3 +22,43 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# OS & IDEs
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Node / Frontend
+node_modules/
+dist/
+.output/
+.nuxt/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Capacitor / Mobile Builds
+android/.gradle/
+android/app/build/
+ios/App/Pods/
+ios/App/build/
+
+# Java / Spring Boot
+target/
+.mvn/
+
+# C++ / CMake
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.o
+*.a
+*.so
+bin/
+
+# Docker volumes locais
+infra/postgres_data/
