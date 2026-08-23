@@ -26,7 +26,7 @@ public class SecurityConfig {
                         .pathMatchers("/actuator/**").permitAll()
                         .pathMatchers("/v3/api-docs/**", "/swagger-ui/**", "/webjars/**").permitAll()
 
-                        .pathMatchers("/api/v1/access/qr-token").hasAnyRole("RESIDENT", "ADMIN")
+                        .pathMatchers("/api/v1/access/qr-token").hasAnyRole("VISITOR", "RESIDENT", "ADMIN")
                         .pathMatchers("/api/v1/access/validate").permitAll()
 
                         .pathMatchers("/api/v1/visitors/invite").hasAnyRole("RESIDENT", "ADMIN")

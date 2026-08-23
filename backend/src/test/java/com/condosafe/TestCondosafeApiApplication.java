@@ -1,6 +1,6 @@
-package com.condosafe.condosafe_api;
+package com.condosafe;
 
-import com.condosafe.CondosafeApiApplication;
+import com.condosafe.TestcontainersConfiguration;
 import org.springframework.boot.SpringApplication;
 
 public class TestCondosafeApiApplication {

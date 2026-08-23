@@ -1,4 +1,4 @@
-package com.condosafe.condosafe_api;
+package com.condosafe;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;

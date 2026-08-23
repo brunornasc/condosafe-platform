@@ -1,5 +1,6 @@
-package com.condosafe.condosafe_api;
+package com.condosafe;
 
+import com.condosafe.TestcontainersConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
