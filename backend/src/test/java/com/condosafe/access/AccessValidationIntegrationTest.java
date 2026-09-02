@@ -3,7 +3,7 @@ package com.condosafe.access;
 import com.condosafe.access.domain.dtos.AccessValidationRequestDTO;
 import com.condosafe.access.domain.dtos.QrCodeDTO;
 import com.condosafe.access.domain.dtos.ValidationResponseDTO;
-import com.condosafe.access.domain.models.ValidationReason;
+import com.condosafe.access.domain.models.enums.ValidationReason;
 import com.redis.testcontainers.RedisContainer;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,14 +52,21 @@ class AccessValidationIntegrationTest {
     @Container
     static KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("apache/kafka:3.7.0"));
 
+    @Autowired
+    private org.springframework.r2dbc.core.DatabaseClient databaseClient;
+
     @DynamicPropertySource
     static void configureDynamicProperties(DynamicPropertyRegistry registry) {
-        // Postgres R2DBC & Flyway JDBC
+        // R2DBC
         registry.add("spring.r2dbc.url", () -> String.format("r2dbc:postgresql://%s:%d/%s",
                 postgres.getHost(), postgres.getFirstMappedPort(), postgres.getDatabaseName()));
         registry.add("spring.r2dbc.username", postgres::getUsername);
         registry.add("spring.r2dbc.password", postgres::getPassword);
+        registry.add("spring.r2dbc.pool.initial-size", () -> 2);
+        registry.add("spring.r2dbc.pool.max-size", () -> 10);
+        registry.add("spring.r2dbc.pool.validation-query", () -> "SELECT 1");
 
+        // Flyway JDBC
         registry.add("spring.flyway.url", postgres::getJdbcUrl);
         registry.add("spring.flyway.user", postgres::getUsername);
         registry.add("spring.flyway.password", postgres::getPassword);
@@ -85,8 +92,31 @@ class AccessValidationIntegrationTest {
     void setUp() {
         this.residentId = UUID.randomUUID();
         this.unitId = UUID.randomUUID();
-    }
+        UUID condoId = UUID.randomUUID();
+        UUID blockId = UUID.randomUUID();
+        String uniqueEmail = "user-" + residentId + "@condosafe.com";
 
+        databaseClient.sql("""
+        INSERT INTO condominiums (id, name, address) 
+        VALUES (:condoId, 'Condo Test', 'Rua Teste, 100')
+    """).bind("condoId", condoId).then()
+                .then(databaseClient.sql("""
+        INSERT INTO blocks (id, condominium_id, name) 
+        VALUES (:blockId, :condoId, 'Bloco A')
+    """).bind("blockId", blockId).bind("condoId", condoId).then())
+                .then(databaseClient.sql("""
+        INSERT INTO units (id, block_id, unit_number, status) 
+        VALUES (:unitId, :blockId, '101', 'ACTIVE')
+    """).bind("unitId", unitId).bind("blockId", blockId).then())
+                .then(databaseClient.sql("""
+        INSERT INTO users (id, keycloak_id, unit_id, full_name, email, role, status) 
+        VALUES (:userId, :keycloakId, :unitId, 'Bruno Rodrigues', :email, 'RESIDENT', 'ACTIVE')
+    """).bind("userId", residentId)
+                        .bind("keycloakId", UUID.randomUUID().toString())
+                        .bind("unitId", unitId)
+                        .bind("email", uniqueEmail).then())
+                .block();
+    }
     @Test
     @DisplayName("Deve conceder acesso para um QR Code válido na primeira leitura")
     void shouldGrantAccessForValidQrCode() {

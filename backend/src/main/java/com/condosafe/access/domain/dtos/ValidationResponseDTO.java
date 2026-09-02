@@ -1,6 +1,6 @@
 package com.condosafe.access.domain.dtos;
 
-import com.condosafe.access.domain.models.ValidationReason;
+import com.condosafe.access.domain.models.enums.ValidationReason;
 
 public record ValidationResponseDTO(
         Boolean granted,

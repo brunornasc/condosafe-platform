@@ -35,7 +35,7 @@ public record AccessLog(
         String reason,
 
         @Column("accessed_at")
-        Long accessedAt
+        Instant accessedAt
 ) {
     public static AccessLog fromEvent(AccessEventDTO event) {
         return new AccessLog(
@@ -47,7 +47,7 @@ public record AccessLog(
                 event.direction(),
                 event.granted(),
                 event.reason(),
-                event.accessedAt() != null ? event.accessedAt() : Instant.now().toEpochMilli()
+                event.accessedAt() != null ? Instant.ofEpochMilli(event.accessedAt()) : Instant.now()
         );
     }
 }

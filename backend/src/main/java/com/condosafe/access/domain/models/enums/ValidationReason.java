@@ -1,4 +1,4 @@
-package com.condosafe.access.domain.models;
+package com.condosafe.access.domain.models.enums;
 
 public enum ValidationReason {
     OK,

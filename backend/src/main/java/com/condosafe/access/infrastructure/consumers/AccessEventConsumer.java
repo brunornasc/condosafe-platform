@@ -29,7 +29,15 @@ public class AccessEventConsumer {
         AccessLog accessLog = AccessLog.fromEvent(event);
 
         accessLogRepository.save(accessLog)
-                .doOnSuccess(saved -> LOG.debug("Log de acesso persistido no Postgres via R2DBC. ID: {}", saved.id()))
+                .doOnSuccess(saved -> {
+                    if (saved != null) {
+                        LOG.debug("Log de acesso persistido no Postgres via R2DBC. ID: {}", saved.id());
+
+                    } else {
+                        LOG.debug("Log de acesso persistido no Postgres via R2DBC. ID: NULL ID");
+
+                    }
+                })
                 .doOnError(error -> LOG.error("Falha ao persistir log de acesso via R2DBC: {}", error.getMessage(), error))
                 .subscribe();
     }
