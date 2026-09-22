@@ -2,9 +2,10 @@ package com.condosafe.access.web;
 
 import com.condosafe.access.domain.dtos.QrProvisioningResponseDTO;
 import com.condosafe.access.infrastructure.repositories.UserRepository;
+import com.condosafe.access.infrastructure.services.QrCodeCryptoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,14 +23,11 @@ public class AccessProvisioningController {
     private static final Logger LOG = LoggerFactory.getLogger(AccessProvisioningController.class);
 
     private final UserRepository userRepository;
-    private final String qrCodeSecretKey;
+    private final QrCodeCryptoService cryptoService;
 
-    public AccessProvisioningController(
-            UserRepository userRepository,
-            @Value("${condosafe.security.qr-code.secret-key}") String qrCodeSecretKey
-    ) {
+    public AccessProvisioningController(UserRepository userRepository, QrCodeCryptoService cryptoService) {
         this.userRepository = userRepository;
-        this.qrCodeSecretKey = qrCodeSecretKey;
+        this.cryptoService = cryptoService;
     }
 
     @GetMapping("/qr-token")
@@ -42,9 +40,15 @@ public class AccessProvisioningController {
                         throw new ResponseStatusException(
                                 HttpStatus.BAD_REQUEST, "Usuário sem unidade vinculada");
                     }
-                    var response = new QrProvisioningResponseDTO(user.id(), user.unitId(), qrCodeSecretKey);
-                    LOG.debug("Provisionando segredo de QR Code para o usuário {}", user.id());
-                    return ResponseEntity.ok(response);
+
+                    // Provisiona a chave DERIVADA do morador — o segredo mestre
+                    // nunca sai do servidor nem é gravado no dispositivo.
+                    String derivedSecret = cryptoService.deriveResidentSecret(user.id());
+                    var response = new QrProvisioningResponseDTO(user.id(), user.unitId(), derivedSecret);
+                    LOG.debug("Provisionando segredo derivado de QR Code para o usuário {}", user.id());
+                    return ResponseEntity.ok()
+                            .cacheControl(CacheControl.noStore())
+                            .body(response);
                 });
     }
 }

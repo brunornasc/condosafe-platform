@@ -4,6 +4,7 @@ import com.condosafe.access.domain.dtos.AccessValidationRequestDTO;
 import com.condosafe.access.domain.dtos.QrCodeDTO;
 import com.condosafe.access.domain.dtos.ValidationResponseDTO;
 import com.condosafe.access.domain.models.enums.ValidationReason;
+import com.condosafe.access.infrastructure.services.QrCodeCryptoService;
 import com.redis.testcontainers.RedisContainer;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,6 +85,9 @@ class AccessValidationIntegrationTest {
 
     @Value("${condosafe.security.qr-code.secret-key}")
     private String secretKey;
+
+    @Autowired
+    private QrCodeCryptoService cryptoService;
 
     private UUID residentId;
     private UUID unitId;
@@ -306,6 +310,25 @@ class AccessValidationIntegrationTest {
                 });
     }
 
+    @Test
+    @DisplayName("Deve bloquear QR de morador assinado com o segredo mestre (chave derivada é a única válida)")
+    void shouldRejectResidentQrSignedWithMasterSecret() {
+        AccessValidationRequestDTO request = createSignedRequest(residentId, unitId,
+                UUID.randomUUID().toString(), Instant.now().getEpochSecond(), secretKey);
+
+        webTestClient.post()
+                .uri("/api/v1/access/validate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(ValidationResponseDTO.class)
+                .value(response -> {
+                    assertThat(response.granted()).isFalse();
+                    assertThat(response.reason()).isEqualTo(ValidationReason.INVALID_SIGNATURE);
+                });
+    }
+
     private UUID insertVisitorInvite(String secretKey, int maxUses) {
         return insertVisitorInvite(secretKey, maxUses, 0);
     }
@@ -353,16 +376,9 @@ class AccessValidationIntegrationTest {
 
     // Helper para gerar o hash HMAC-SHA256 válido
     private AccessValidationRequestDTO createValidRequest(UUID sub, UUID unt, String jti, long tms) {
-        String rawData = String.format("%s:%s:%d:%s", sub, unt, tms, jti);
-        String sig = calculateHmacSha256(rawData, secretKey);
-
-        QrCodeDTO qrCode = new QrCodeDTO(sub, unt, tms, jti, sig);
-        return new AccessValidationRequestDTO(
-                qrCode,
-                "GATE_MAIN_TURNSTILE_01",
-                "QR_CODE_TOTP",
-                "IN"
-        );
+        // Moradores assinam com a chave DERIVADA (nunca o mestre)
+        String residentSecret = cryptoService.deriveResidentSecret(sub);
+        return createSignedRequest(sub, unt, jti, tms, residentSecret);
     }
 
     private String calculateHmacSha256(String data, String key) {

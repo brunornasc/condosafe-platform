@@ -18,6 +18,7 @@ import java.util.UUID;
 public class QrCodeCryptoService {
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     private static final long TIME_STEP_SECONDS = 30L;
+    private static final String RESIDENT_KEY_LABEL = "resident:";
 
     private final String masterSecret;
     private final SecretKeySpec keySpec;
@@ -41,13 +42,33 @@ public class QrCodeCryptoService {
     /**
      * Valida a assinatura HMAC do QR Code usando o segredo do sujeito.
      * - Visitante (VisitorInvite): segredo exclusivo gravado em visitor_invites.
-     * - Morador (User): segredo mestre compartilhado (condosafe.security.qr-code.secret-key).
+     * - Morador (User): segredo compatilhado derivado do mestre (nunca o segredo
+     *   mestre em si), via deriveResidentSecret(subject.getId()).
      */
     public boolean isValidSignature(QrCodeDTO dto, AccessSubject subject) {
         if (subject instanceof VisitorInvite invite && invite.secretKey() != null) {
             return isValidSignature(dto, invite.secretKey());
         }
-        return isValidSignature(dto);
+        return isValidSignature(dto, deriveResidentSecret(subject.getId()));
+    }
+
+    /**
+     * Deriva um segredo por-morador a partir do segredo mestre:
+     * HMAC-SHA256(master, "resident:" + userId) -> hex.
+     *
+     * O mestre nunca trafega nem é gravado no cliente: cada morador recebe a
+     * própria chave derivada (KDF de um passo, estilo HKDF sem HKDF-Extract),
+     * o que permite revogação e rotação granular sem expor chaves de terceiros.
+     */
+    public String deriveResidentSecret(UUID residentId) {
+        try {
+            Mac hmac = Mac.getInstance(HMAC_ALGORITHM);
+            hmac.init(this.keySpec);
+            byte[] derived = hmac.doFinal((RESIDENT_KEY_LABEL + residentId).getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(derived);
+        } catch (Exception e) {
+            throw new IllegalStateException("Falha ao derivar segredo do morador", e);
+        }
     }
 
     public boolean isValidSignature(QrCodeDTO dto, String secret) {
