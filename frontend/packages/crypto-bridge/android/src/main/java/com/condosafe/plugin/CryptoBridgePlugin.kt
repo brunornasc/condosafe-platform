@@ -7,6 +7,7 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import java.nio.charset.StandardCharsets
 import java.time.Instant
+import java.util.Locale
 import java.util.UUID
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
@@ -26,21 +27,26 @@ class CryptoBridgePlugin : Plugin() {
             return
         }
 
+        // Normaliza para o UUID canônico (lowercase) usado pelo backend ao
+        // recomputar o HMAC; evita INVALID_SIGNATURE para inputs em maiúsculas.
+        val normalizedSubject = normalizeUuid(subjectId, "subjectId", call) ?: return
+        val normalizedUnit = normalizeUuid(unitId, "unitId", call) ?: return
+
         try {
             val jti = UUID.randomUUID().toString()
-            val rawData = "$subjectId:$unitId:$timestamp:$jti"
+            val rawData = "$normalizedSubject:$normalizedUnit:$timestamp:$jti"
             val signature = calculateHmacSha256(rawData, secretKey)
 
             val ret = JSObject().apply {
-                put("sub", subjectId)
-                put("unt", unitId)
+                put("sub", normalizedSubject)
+                put("unt", normalizedUnit)
                 put("tms", timestamp)
                 put("jti", jti)
                 put("sig", signature)
 
                 val rawJson = JSObject().apply {
-                    put("sub", subjectId)
-                    put("unt", unitId)
+                    put("sub", normalizedSubject)
+                    put("unt", normalizedUnit)
                     put("tms", timestamp)
                     put("jti", jti)
                     put("sig", signature)
@@ -55,6 +61,15 @@ class CryptoBridgePlugin : Plugin() {
         }
     }
 
+    private fun normalizeUuid(value: String, field: String, call: PluginCall): String? {
+        return try {
+            UUID.fromString(value).toString()
+        } catch (e: IllegalArgumentException) {
+            call.reject("O parâmetro '$field' não é um UUID válido: \"$value\"")
+            null
+        }
+    }
+
     private fun calculateHmacSha256(data: String, key: String): String {
         val algorithm = "HmacSHA256"
         val secretKeySpec = SecretKeySpec(key.toByteArray(StandardCharsets.UTF_8), algorithm)
@@ -62,6 +77,6 @@ class CryptoBridgePlugin : Plugin() {
         mac.init(secretKeySpec)
         val hmacBytes = mac.doFinal(data.toByteArray(StandardCharsets.UTF_8))
 
-        return hmacBytes.joinToString("") { "%02x".format(it) }
+        return hmacBytes.joinToString("") { String.format(Locale.ROOT, "%02x", it) }
     }
 }
