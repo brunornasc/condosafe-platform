@@ -40,6 +40,9 @@ public record VisitorInvite(
         @Column("status")
         String status,
 
+        @Column("secret_key")
+        String secretKey,
+
         @Column("created_at")
         Instant createdAt
 ) implements AccessSubject {

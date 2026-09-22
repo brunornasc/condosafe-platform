@@ -4,5 +4,7 @@ public enum ValidationReason {
     OK,
     REPLAY_ATTACK,
     INVALID_SIGNATURE,
-    EXPIRED;
+    EXPIRED,
+    SUBJECT_NOT_FOUND,
+    SUBJECT_NOT_ALLOWED;
 }

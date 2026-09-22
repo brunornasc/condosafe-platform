@@ -2,11 +2,12 @@
   "name": "@condosafe/crypto-bridge",
   "version": "0.0.1",
   "description": "Native cryptographic bridge for offline TOTP QR code generation in CondoSafe Platform",
-  "main": "dist/plugin.cjs.js",
+  "main": "dist/esm/index.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "prepare": "npm run build"
   },
   "capacitor": {
     "android": {

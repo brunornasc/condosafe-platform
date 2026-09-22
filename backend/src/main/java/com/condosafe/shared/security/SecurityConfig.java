@@ -29,7 +29,7 @@ public class SecurityConfig {
                         .pathMatchers("/api/v1/access/qr-token").hasAnyRole("VISITOR", "RESIDENT", "ADMIN")
                         .pathMatchers("/api/v1/access/validate").permitAll()
 
-                        .pathMatchers("/api/v1/visitors/invite").hasAnyRole("RESIDENT", "ADMIN")
+                        .pathMatchers("/api/v1/visitors/invite/**").hasAnyRole("RESIDENT", "ADMIN")
                         .pathMatchers("/api/v1/visitors/pass/**").permitAll()
 
                         .pathMatchers("/api/v1/emergency/trigger").hasAnyRole("GUARD", "ADMIN")

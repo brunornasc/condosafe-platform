@@ -1,0 +1,15 @@
+{
+  "name": "condosafe-frontend",
+  "private": true,
+  "version": "0.0.1",
+  "description": "CondoSafe frontend monorepo (npm workspaces)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build:bridge": "npm run build --workspace @condosafe/crypto-bridge",
+    "dev:resident": "npm run dev --workspace @condosafe/resident-mobile",
+    "sync:android": "npm run sync:android --workspace @condosafe/resident-mobile"
+  }
+}

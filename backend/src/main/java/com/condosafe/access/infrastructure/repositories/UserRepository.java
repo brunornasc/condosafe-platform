@@ -13,4 +13,7 @@ public interface UserRepository extends R2dbcRepository<User, UUID> {
 
     @Query("SELECT * FROM users WHERE id = :userId AND unit_id = :unitId")
     Mono<User> findByIdAndUnitId(UUID userId, UUID unitId);
+
+    @Query("SELECT * FROM users WHERE keycloak_id = :keycloakId")
+    Mono<User> findByKeycloakId(String keycloakId);
 }

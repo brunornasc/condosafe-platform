@@ -1,8 +1,9 @@
 package com.condosafe.access.domain.dtos;
 
-import module java.base;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+
+import java.util.UUID;
 
 public record QrCodeDTO (
         @NotNull UUID sub,

@@ -240,6 +240,117 @@ class AccessValidationIntegrationTest {
                 });
     }
 
+    @Test
+    @DisplayName("Deve conceder acesso a um convite de visitante assinado com o secret_key do convite")
+    void shouldGrantAccessForValidVisitorInviteSignedWithInviteSecret() {
+        String inviteSecret = randomHexSecret();
+        UUID inviteId = insertVisitorInvite(inviteSecret, 1);
+
+        AccessValidationRequestDTO request = createSignedRequest(inviteId, unitId,
+                UUID.randomUUID().toString(), Instant.now().getEpochSecond(), inviteSecret);
+
+        webTestClient.post()
+                .uri("/api/v1/access/validate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(ValidationResponseDTO.class)
+                .value(response -> {
+                    assertThat(response.granted()).isTrue();
+                    assertThat(response.reason()).isEqualTo(ValidationReason.OK);
+                });
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar com INVALID_SIGNATURE um convite de visitante assinado com o segredo mestre")
+    void shouldRejectVisitorInviteSignedWithMasterSecret() {
+        String inviteSecret = randomHexSecret();
+        UUID inviteId = insertVisitorInvite(inviteSecret, 5);
+
+        AccessValidationRequestDTO request = createValidRequest(inviteId, unitId,
+                UUID.randomUUID().toString(), Instant.now().getEpochSecond());
+
+        webTestClient.post()
+                .uri("/api/v1/access/validate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(ValidationResponseDTO.class)
+                .value(response -> {
+                    assertThat(response.granted()).isFalse();
+                    assertThat(response.reason()).isEqualTo(ValidationReason.INVALID_SIGNATURE);
+                });
+    }
+
+    @Test
+    @DisplayName("Deve bloqueiar convite de visitante consumido (used_count >= max_uses) com SUBJECT_NOT_ALLOWED")
+    void shouldRejectVisitedInviteWhenUsageExhausted() {
+        String inviteSecret = randomHexSecret();
+        UUID inviteId = insertVisitorInvite(inviteSecret, 1, 1);
+
+        AccessValidationRequestDTO request = createSignedRequest(inviteId, unitId,
+                UUID.randomUUID().toString(), Instant.now().getEpochSecond(), inviteSecret);
+
+        webTestClient.post()
+                .uri("/api/v1/access/validate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(ValidationResponseDTO.class)
+                .value(response -> {
+                    assertThat(response.granted()).isFalse();
+                    assertThat(response.reason()).isEqualTo(ValidationReason.SUBJECT_NOT_ALLOWED);
+                });
+    }
+
+    private UUID insertVisitorInvite(String secretKey, int maxUses) {
+        return insertVisitorInvite(secretKey, maxUses, 0);
+    }
+
+    private UUID insertVisitorInvite(String secretKey, int maxUses, int usedCount) {
+        UUID inviteId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        databaseClient.sql("""
+        INSERT INTO visitor_invites
+            (id, unit_id, resident_id, visitor_name, document_number, valid_from, valid_until, max_uses, used_count, status, secret_key)
+        VALUES (:inviteId, :unitId, :residentId, 'Visitante Teste', NULL, :validFrom, :validUntil, :maxUses, :usedCount, 'ACTIVE', :secretKey)
+        """).bind("inviteId", inviteId)
+                .bind("unitId", unitId)
+                .bind("residentId", residentId)
+                .bind("validFrom", now.minusSeconds(60))
+                .bind("validUntil", now.plusSeconds(3600))
+                .bind("maxUses", maxUses)
+                .bind("usedCount", usedCount)
+                .bind("secretKey", secretKey)
+                .then()
+                .block();
+
+        return inviteId;
+    }
+
+    private static String randomHexSecret() {
+        byte[] secret = new byte[32];
+        new java.security.SecureRandom().nextBytes(secret);
+        return HexFormat.of().formatHex(secret);
+    }
+
+    private AccessValidationRequestDTO createSignedRequest(UUID sub, UUID unt, String jti, long tms, String key) {
+        String rawData = String.format("%s:%s:%d:%s", sub, unt, tms, jti);
+        String sig = calculateHmacSha256(rawData, key);
+
+        QrCodeDTO qrCode = new QrCodeDTO(sub, unt, tms, jti, sig);
+        return new AccessValidationRequestDTO(
+                qrCode,
+                "GATE_MAIN_TURNSTILE_01",
+                "QR_CODE_TOTP",
+                "IN"
+        );
+    }
+
     // Helper para gerar o hash HMAC-SHA256 válido
     private AccessValidationRequestDTO createValidRequest(UUID sub, UUID unt, String jti, long tms) {
         String rawData = String.format("%s:%s:%d:%s", sub, unt, tms, jti);
